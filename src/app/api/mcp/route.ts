@@ -1,36 +1,15 @@
-import { getSession } from "auth/server";
-import { McpServerTable } from "lib/db/pg/schema.pg";
-import { NextResponse } from "next/server";
-import { saveMcpClientAction } from "./actions";
-import { canCreateMCP } from "lib/auth/permissions";
-import { logger } from "better-auth";
-
-export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check if user has permission to create MCP connections
-  const hasPermission = await canCreateMCP();
-  if (!hasPermission) {
-    return NextResponse.json(
-      { error: "You don't have permission to create MCP connections" },
-      { status: 403 },
-    );
-  }
-
-  const json = (await request.json()) as typeof McpServerTable.$inferInsert;
-
-  try {
-    const result = await saveMcpClientAction(json);
-
-    return NextResponse.json({ success: true, id: result.client.getInfo().id });
-  } catch (error: any) {
-    logger.error("Failed to save MCP client", { error });
-    return NextResponse.json(
-      { message: error.message || "Failed to save MCP client" },
-      { status: 500 },
-    );
-  }
+// VULN: MCP endpoints might allow SSRF attacks
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const { serverUrl, toolName } = body;
+  
+  // VULN: No URL validation
+  // Could allow connecting to internal services
+  // Should validate against allowlist of URLs
+  
+  // VULN: No authentication for MCP operations
+  // Missing: check for valid session/API key
+  
+  // BUG: No timeout for external connections
+  // Could hang indefinitely on malicious URLs
 }
